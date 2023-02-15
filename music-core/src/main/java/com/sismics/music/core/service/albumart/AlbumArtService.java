@@ -49,16 +49,26 @@ public class AlbumArtService  {
         album.setAlbumArt(id);
         
         if (copyOriginal) {
-            // Copy the original file to the album directory
-            Path albumArtPath = Paths.get(album.getLocation(), "albumart.jpg");
-            File albumArtFile = albumArtPath.toFile();
-            try {
-                ImageUtil.writeJpeg(originalImage, albumArtFile);
-            } catch (Exception e) {
-                throw new NonWritableException(e);
-            }
+            copyFile(album, originalImage);
         }
     }
+
+	/**
+	 * @param album
+	 * @param originalImage
+	 * @throws NonWritableException
+	 */
+	private void copyFile(Album album, BufferedImage originalImage) throws NonWritableException
+	{
+		// Copy the original file to the album directory
+		Path albumArtPath = Paths.get(album.getLocation(), "albumart.jpg");
+		File albumArtFile = albumArtPath.toFile();
+		try {
+		    ImageUtil.writeJpeg(originalImage, albumArtFile);
+		} catch (Exception e) {
+		    throw new NonWritableException(e);
+		}
+	}
     
     /**
      * Import the album art into the application.

@@ -55,22 +55,30 @@ public class CollectionWatchService extends AbstractExecutionThreadService {
     @Override
     protected void startUp() {
         TransactionUtil.handle(() -> {
-            // Create a NIO watch service
-            try {
-                watchService = FileSystems.getDefault().newWatchService();
-            } catch (IOException e) {
-                log.error("Cannot create a NIO watch service", e);
-                stopAsync();
-            }
-
-            // Start watching all directories
-            DirectoryDao directoryDao = new DirectoryDao();
-            List<Directory> directoryList = directoryDao.findAllEnabled();
-            for (Directory directory : directoryList) {
-                watchDirectory(directory);
-            }
+            createWatchService();
+            watchAllDir();
         });
     }
+
+	private void watchAllDir()
+	{
+		DirectoryDao directoryDao = new DirectoryDao();
+		List<Directory> directoryList = directoryDao.findAllEnabled();
+		for (Directory directory : directoryList) {
+		    watchDirectory(directory);
+		}
+	}
+
+	private void createWatchService()
+	{
+		// Create a NIO watch service
+		try {
+		    watchService = FileSystems.getDefault().newWatchService();
+		} catch (IOException e) {
+		    log.error("Cannot create a NIO watch service", e);
+		    stopAsync();
+		}
+	}
     
     /**
      * Watch a new directory.
@@ -129,31 +137,7 @@ public class CollectionWatchService extends AbstractExecutionThreadService {
                 continue;
             }
             
-            for (WatchEvent<?> event : watchKey.pollEvents()) {
-                @SuppressWarnings("unchecked")
-                WatchEvent<Path> eventPath = (WatchEvent<Path>) event;
-                WatchEvent.Kind<Path> kind = eventPath.kind();
-                Path path = dir.resolve(eventPath.context());
-                final Directory directory = getParentDirectory(path);
-                Path directoryPath = Paths.get(directory.getLocation());
-                
-                if (kind == ENTRY_CREATE) {
-                    if (Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS)) {
-                        // Watch the new directory if it's not too deep, and index it fully
-                        if (path.getNameCount() - directoryPath.getNameCount() == 1) {
-                            log.info("New directory created, watching and indexing it: " + path);
-                            watchPath(path);
-                            indexFolder(directory, path);
-                        }
-                    } else {
-                        indexNewFile(directory, path);
-                    }
-                }
-                
-                if (kind == ENTRY_DELETE) {
-                    pathRemoved(directory, path);
-                }
-            }
+            handlePath(watchKey, dir);
             
             cleanupOrphans();
             
@@ -162,6 +146,35 @@ public class CollectionWatchService extends AbstractExecutionThreadService {
             }
         }
     }
+
+	private void handlePath(WatchKey watchKey, Path dir) throws IOException
+	{
+		for (WatchEvent<?> event : watchKey.pollEvents()) {
+		    @SuppressWarnings("unchecked")
+		    WatchEvent<Path> eventPath = (WatchEvent<Path>) event;
+		    WatchEvent.Kind<Path> kind = eventPath.kind();
+		    Path path = dir.resolve(eventPath.context());
+		    final Directory directory = getParentDirectory(path);
+		    Path directoryPath = Paths.get(directory.getLocation());
+		    
+		    if (kind == ENTRY_CREATE) {
+		        if (Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS)) {
+		            // Watch the new directory if it's not too deep, and index it fully
+		            if (path.getNameCount() - directoryPath.getNameCount() == 1) {
+		                log.info("New directory created, watching and indexing it: " + path);
+		                watchPath(path);
+		                indexFolder(directory, path);
+		            }
+		        } else {
+		            indexNewFile(directory, path);
+		        }
+		    }
+		    
+		    if (kind == ENTRY_DELETE) {
+		        pathRemoved(directory, path);
+		    }
+		}
+	}
     
     @Override
     protected void shutDown() {

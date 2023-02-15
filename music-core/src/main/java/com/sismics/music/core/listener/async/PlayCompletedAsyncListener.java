@@ -3,7 +3,7 @@ package com.sismics.music.core.listener.async;
 import com.google.common.eventbus.Subscribe;
 import com.sismics.music.core.dao.dbi.UserDao;
 import com.sismics.music.core.dao.dbi.UserTrackDao;
-import com.sismics.music.core.event.async.PlayCompletedEvent;
+import com.sismics.music.core.event.async.PlayAsyncEvent;
 import com.sismics.music.core.model.context.AppContext;
 import com.sismics.music.core.model.dbi.Track;
 import com.sismics.music.core.model.dbi.User;
@@ -26,16 +26,16 @@ public class PlayCompletedAsyncListener {
     /**
      * Process the event.
      *
-     * @param playCompletedEvent Play completed event
+     * @param playAsyncEvent Play completed event
      */
     @Subscribe
-    public void onPlayCompleted(final PlayCompletedEvent playCompletedEvent) throws Exception {
+    public void onPlayCompleted(final PlayAsyncEvent playAsyncEvent) throws Exception {
         if (log.isInfoEnabled()) {
-            log.info("Play completed event: " + playCompletedEvent.toString());
+            log.info("Play completed event: " + playAsyncEvent.toString());
         }
 
-        final String userId = playCompletedEvent.getUserId();
-        final Track track = playCompletedEvent.getTrack();
+        final String userId = playAsyncEvent.getUserId();
+        final Track track = playAsyncEvent.getTrack();
 
         TransactionUtil.handle(() -> {
             // Increment the play count

@@ -1,7 +1,6 @@
 package com.sismics.music.core.service.player;
 
-import com.sismics.music.core.event.async.PlayCompletedEvent;
-import com.sismics.music.core.event.async.PlayStartedEvent;
+import com.sismics.music.core.event.async.PlayAsyncEvent;
 import com.sismics.music.core.model.context.AppContext;
 import com.sismics.music.core.model.dbi.Track;
 
@@ -40,7 +39,7 @@ public class PlayerService {
             currentlyPlayerStatus.put(userId, status);
 
             // Dispatch a new play started event
-            PlayStartedEvent event = new PlayStartedEvent(userId, track);
+            PlayAsyncEvent event = new PlayAsyncEvent(userId, track);
             AppContext.getInstance().getLastFmEventBus().post(event);
         } else {
             status.setDuration(duration);
@@ -50,7 +49,7 @@ public class PlayerService {
             status.setCommited(true);
 
             // Dispatch a new play completed event
-            PlayCompletedEvent event = new PlayCompletedEvent(userId, track);
+            PlayAsyncEvent event = new PlayAsyncEvent(userId, track);
             AppContext.getInstance().getLastFmEventBus().post(event);
         }
     }

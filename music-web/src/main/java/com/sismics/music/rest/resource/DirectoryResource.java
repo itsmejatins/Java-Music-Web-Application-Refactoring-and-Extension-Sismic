@@ -1,8 +1,7 @@
 package com.sismics.music.rest.resource;
 
 import com.sismics.music.core.dao.dbi.DirectoryDao;
-import com.sismics.music.core.event.async.DirectoryCreatedAsyncEvent;
-import com.sismics.music.core.event.async.DirectoryDeletedAsyncEvent;
+import com.sismics.music.core.event.async.DirectoryModificationAsyncEvent;
 import com.sismics.music.core.model.context.AppContext;
 import com.sismics.music.core.model.dbi.Directory;
 import com.sismics.music.rest.constant.Privilege;
@@ -53,9 +52,9 @@ public class DirectoryResource extends BaseResource {
         directoryDao.create(directory);
         
         // Raise a directory creation event
-        DirectoryCreatedAsyncEvent directoryCreatedAsyncEvent = new DirectoryCreatedAsyncEvent();
-        directoryCreatedAsyncEvent.setDirectory(directory);
-        AppContext.getInstance().getCollectionEventBus().post(directoryCreatedAsyncEvent);
+        DirectoryModificationAsyncEvent directoryModificationAsyncEvent = new DirectoryModificationAsyncEvent();
+        directoryModificationAsyncEvent.setDirectory(directory);
+        AppContext.getInstance().getCollectionEventBus().post(directoryModificationAsyncEvent);
 
         // Always return OK
         return okJson();
@@ -101,9 +100,9 @@ public class DirectoryResource extends BaseResource {
         directoryDao.update(directory);
 
         // Raise a directory creation event
-        DirectoryCreatedAsyncEvent directoryCreatedAsyncEvent = new DirectoryCreatedAsyncEvent();
-        directoryCreatedAsyncEvent.setDirectory(directory);
-        AppContext.getInstance().getCollectionEventBus().post(directoryCreatedAsyncEvent);
+        DirectoryModificationAsyncEvent directoryModificationAsyncEvent = new DirectoryModificationAsyncEvent();
+        directoryModificationAsyncEvent.setDirectory(directory);
+        AppContext.getInstance().getCollectionEventBus().post(directoryModificationAsyncEvent);
 
         // Always return "ok"
         return okJson();
@@ -134,7 +133,7 @@ public class DirectoryResource extends BaseResource {
         directoryDao.delete(directory.getId());
 
         // Raise a directory deleted event
-        DirectoryDeletedAsyncEvent directoryDeletedAsyncEvent = new DirectoryDeletedAsyncEvent();
+        DirectoryModificationAsyncEvent directoryDeletedAsyncEvent = new DirectoryModificationAsyncEvent();
         directoryDeletedAsyncEvent.setDirectory(directory);
         AppContext.getInstance().getCollectionEventBus().post(directoryDeletedAsyncEvent);
 

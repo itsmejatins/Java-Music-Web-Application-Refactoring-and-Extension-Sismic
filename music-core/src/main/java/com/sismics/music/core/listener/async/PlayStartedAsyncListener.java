@@ -2,7 +2,7 @@ package com.sismics.music.core.listener.async;
 
 import com.google.common.eventbus.Subscribe;
 import com.sismics.music.core.dao.dbi.UserDao;
-import com.sismics.music.core.event.async.PlayStartedEvent;
+import com.sismics.music.core.event.async.PlayAsyncEvent;
 import com.sismics.music.core.model.context.AppContext;
 import com.sismics.music.core.model.dbi.Track;
 import com.sismics.music.core.model.dbi.User;
@@ -28,7 +28,7 @@ public class PlayStartedAsyncListener {
      * @param playStartedEvent Play started event
      */
     @Subscribe
-    public void onPlayStarted(final PlayStartedEvent playStartedEvent) throws Exception {
+    public void onPlayStarted(final PlayAsyncEvent playStartedEvent) throws Exception {
         if (log.isInfoEnabled()) {
             log.info("Play started event: " + playStartedEvent.toString());
         }

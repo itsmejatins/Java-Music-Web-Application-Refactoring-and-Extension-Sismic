@@ -42,264 +42,360 @@ import java.util.concurrent.TimeUnit;
  *
  * @author jtremeaux
  */
-public class CollectionService extends AbstractScheduledService {
-    /**
-     * Logger.
-     */
-    private static final Logger log = LoggerFactory.getLogger(CollectionService.class);
+public class CollectionService extends AbstractScheduledService
+{
+	/**
+	 * Logger.
+	 */
+	private static final Logger log = LoggerFactory.getLogger(CollectionService.class);
 
-    public CollectionService() {
-    }
+	public CollectionService()
+	{
+	}
 
-    @Override
-    protected void startUp() {
-    }
+	@Override
+	protected void startUp()
+	{
+	}
 
-    @Override
-    protected void shutDown() {
-    }
+	@Override
+	protected void shutDown()
+	{
+	}
 
-    @Override
-    protected void runOneIteration() throws Exception {
-        TransactionUtil.handle(() -> reindex());
-    }
+	@Override
+	protected void runOneIteration() throws Exception
+	{
+		TransactionUtil.handle(() -> reindex());
+	}
 
-    @Override
-    protected Scheduler scheduler() {
-        return Scheduler.newFixedDelaySchedule(0, 24, TimeUnit.HOURS);
-    }
+	@Override
+	protected Scheduler scheduler()
+	{
+		return Scheduler.newFixedDelaySchedule(0, 24, TimeUnit.HOURS);
+	}
 
-    /**
-     * Add a directory to the index / update existing index.
-     *
-     * @param directory Directory to index
-     */
-    public void addDirectoryToIndex(Directory directory) {
-        if (log.isInfoEnabled()) {
-            log.info(MessageFormat.format("Adding directory {0} to index", directory.getLocation()));
-        }
-        // Index the directory recursively
-        CollectionVisitor collectionVisitor = new CollectionVisitor(directory);
-        collectionVisitor.index();
-        
-        // Delete non-existing tracks
-        Set<String> existingFileNameSet = collectionVisitor.getFileNameSet();
-        TrackDao trackDao = new TrackDao();
-        List<TrackDto> trackDtoList = trackDao.findByCriteria(new TrackCriteria().setDirectoryId(directory.getId()));
-        for (TrackDto trackDto : trackDtoList) {
-            if (!existingFileNameSet.contains(trackDto.getFileName())) {
-                trackDao.delete(trackDto.getId());
-            }
-        }
-        
-        // Cleanup empty albums
-        AlbumDao albumDao = new AlbumDao();
-        albumDao.deleteEmptyAlbum();
-        
-        // Delete all artists that don't have any album or track
-        ArtistDao artistDao = new ArtistDao();
-        artistDao.deleteEmptyArtist();
+	/**
+	 * Add a directory to the index / update existing index.
+	 *
+	 * @param directory Directory to index
+	 */
+	public void addDirectoryToIndex(Directory directory)
+	{
+		if (log.isInfoEnabled())
+		{
+			log.info(MessageFormat.format("Adding directory {0} to index", directory.getLocation()));
+		}
+		CollectionVisitor collectionVisitor = indexDirectory(directory);
+		deleteNonExistingTracks(directory, collectionVisitor);
+		cleanEmptyAlbums();
+		ArtistDao artistDao = new ArtistDao();
+		artistDao.deleteEmptyArtist();
 
-        if (log.isInfoEnabled()) {
-            log.info(MessageFormat.format("Done adding directory {0} to index", directory.getLocation()));
-        }
-    }
+		if (log.isInfoEnabled())
+		{
+			log.info(MessageFormat.format("Done adding directory {0} to index", directory.getLocation()));
+		}
+	}
 
-    /**
-     * Remove a directory from the index.
-     *
-     * @param directory Directory to index
-     */
-    public void removeDirectoryFromIndex(Directory directory) {
-        if (log.isInfoEnabled()) {
-            log.info(MessageFormat.format("Removing directory {0} from index", directory.getLocation()));
-        }
-        
-        // Search all tracks included in the deleted path and remove them
-        TrackDao trackDao = new TrackDao();
-        List<Track> trackList = trackDao.getActiveByDirectoryInLocation(directory.getId(), directory.getLocation());
-        for (Track track : trackList) {
-            trackDao.delete(track.getId());
-        }
-        
-        // Delete all albums from this directory
-        AlbumDao albumDao = new AlbumDao();
-        List<AlbumDto> albumList = albumDao.findByCriteria(new AlbumCriteria().setDirectoryId(directory.getId()));
-        for (AlbumDto albumDto : albumList) {
-            albumDao.delete(albumDto.getId());
-        }
-        
-        // Delete all artists that don't have any album or track
-        ArtistDao artistDao = new ArtistDao();
-        artistDao.deleteEmptyArtist();
+	private void cleanEmptyAlbums()
+	{
+		AlbumDao albumDao = new AlbumDao();
+		albumDao.deleteEmptyAlbum();
+	}
 
-        if (log.isInfoEnabled()) {
-            log.info(MessageFormat.format("Done removing directory {0} from index", directory.getLocation()));
-        }
-    }
+	/**
+	 * @param directory
+	 * @param collectionVisitor
+	 */
+	private void deleteNonExistingTracks(Directory directory, CollectionVisitor collectionVisitor)
+	{
+		Set<String> existingFileNameSet = collectionVisitor.getFileNameSet();
+		TrackDao trackDao = new TrackDao();
+		List<TrackDto> trackDtoList = trackDao.findByCriteria(new TrackCriteria().setDirectoryId(directory.getId()));
+		for (TrackDto trackDto : trackDtoList)
+		{
+			if (!existingFileNameSet.contains(trackDto.getFileName()))
+			{
+				trackDao.delete(trackDto.getId());
+			}
+		}
+	}
 
-    /**
-     * Add / update a media file to the index.
-     *
-     * @param directory Directory to index
-     * @param file File to add
-     */
-    public void indexFile(Directory directory, Path file) {
-        Stopwatch stopWatch = Stopwatch.createStarted();
-        // TODO This method should handle albumarts too
-        try {
-            TrackDao trackDao = new TrackDao();
-            Track track = trackDao.getActiveByDirectoryAndFilename(directory.getId(), file.toAbsolutePath().toString());
-            if (track != null) {
-                readTrackMetadata(directory, file, track);
-                trackDao.update(track);
+	/**
+	 * @param directory
+	 * @return
+	 */
+	private CollectionVisitor indexDirectory(Directory directory)
+	{
+		CollectionVisitor collectionVisitor = new CollectionVisitor(directory);
+		collectionVisitor.index();
+		return collectionVisitor;
+	}
 
-                // FIXME update album date if track has changed?
-            } else {
-                track = new Track();
-                track.setFileName(file.toAbsolutePath().toString());
+	/**
+	 * Remove a directory from the index.
+	 *
+	 * @param directory Directory to index
+	 */
+	public void removeDirectoryFromIndex(Directory directory)
+	{
+		if (log.isInfoEnabled())
+		{
+			log.info(MessageFormat.format("Removing directory {0} from index", directory.getLocation()));
+		}
 
-                readTrackMetadata(directory, file, track);
-                trackDao.create(track);
+		// Search all tracks included in the deleted path and remove them
+		TrackDao trackDao = new TrackDao();
+		List<Track> trackList = trackDao.getActiveByDirectoryInLocation(directory.getId(), directory.getLocation());
+		for (Track track : trackList)
+		{
+			trackDao.delete(track.getId());
+		}
 
-                // Update the album date
-                // TODO This makes no sense
-                /*Album album = new Album(track.getAlbumId());
-                album.setUpdateDate(track.getCreateDate());
-                AlbumDao albumDao = new AlbumDao();
-                albumDao.updateAlbumDate(album);*/
-            }
-        } catch (Exception e) {
-            log.error("Error extracting metadata from file: " + file, e);
-        }
-        if (log.isInfoEnabled()) {
-            log.info(MessageFormat.format("File {0} indexed in {1}", file, stopWatch));
-        }
-    }
-    
-    /**
-     * Read metadata from a media file into the Track.
-     *
-     * @param rootDirectory Root directory to index
-     * @param file Media file to read from
-     * @param track Track entity (updated)
-     */
-    public void readTrackMetadata(Directory rootDirectory, Path file, Track track) throws Exception {
-        Path parentPath = file.getParent();
-        DirectoryNameParser nameParser = new DirectoryNameParser(parentPath);
-        String albumArtistName = StringUtils.abbreviate(nameParser.getArtistName(), 1000).trim();
-        String albumName = StringUtils.abbreviate(nameParser.getAlbumName(), 1000).trim();
-        ArtistDao artistDao = new ArtistDao();
-        
-        AudioFile audioFile = AudioFileIO.read(file.toFile());
-        Tag tag = audioFile.getTag();
-        
-        // The album artist can't be null, check is in the directory name parser
-        Artist albumArtist = artistDao.getActiveByName(albumArtistName);
-        if (albumArtist == null) {
-            albumArtist = new Artist();
-            albumArtist.setName(albumArtistName);
-            artistDao.create(albumArtist);
-        }
-        
-        if (tag == null) {
-            // No tag available, use filename as title and album artist as artist, and guess the rest
-            track.setTitle(Files.getNameWithoutExtension(file.getFileName().toString()));
-            track.setArtistId(albumArtist.getId());
-            track.setLength((int) (file.toFile().length() / 128000));
-            track.setBitrate(128);
-            track.setFormat(Files.getFileExtension(file.getFileName().toString()));
-            track.setVbr(true);
-        } else {
-            AudioHeader header = audioFile.getAudioHeader();
-    
-            track.setLength(header.getTrackLength());
-            track.setBitrate(header.getSampleRateAsNumber());
-            track.setFormat(StringUtils.abbreviate(header.getEncodingType(), 50));
-            track.setVbr(header.isVariableBitRate());
-    
-            String order = tag.getFirst(FieldKey.TRACK);
-            if (!Strings.isNullOrEmpty(order)) {
-                try {
-                    track.setOrder(Integer.valueOf(order));
-                } catch (NumberFormatException e) {
-                    // Ignore parsing errors
-                }
-            }
-    
-            String year = tag.getFirst(FieldKey.YEAR);
-            if (!Strings.isNullOrEmpty(year)) {
-                try {
-                    track.setYear(Integer.valueOf(year));
-                } catch (NumberFormatException e) {
-                    // Ignore parsing errors
-                }
-            }
-    
-            // Track title (can be empty string)
-            track.setTitle(StringUtils.abbreviate(tag.getFirst(FieldKey.TITLE), 2000).trim());
-            
-            // Track artist (can be empty string)
-            String artistName = StringUtils.abbreviate(tag.getFirst(FieldKey.ARTIST), 1000).trim();
-            Artist artist = artistDao.getActiveByName(artistName);
-            if (artist == null) {
-                artist = new Artist();
-                artist.setName(artistName);
-                artistDao.create(artist);
-            }
-            track.setArtistId(artist.getId());
-        }
+		// Delete all albums from this directory
+		AlbumDao albumDao = new AlbumDao();
+		List<AlbumDto> albumList = albumDao.findByCriteria(new AlbumCriteria().setDirectoryId(directory.getId()));
+		for (AlbumDto albumDto : albumList)
+		{
+			albumDao.delete(albumDto.getId());
+		}
 
-        // Track album
-        AlbumDao albumDao = new AlbumDao();
-        Album album = albumDao.getActiveByArtistIdAndName(albumArtist.getId(), albumName);
-        if (album == null) {
-            // Import album art
-            AlbumArtImporter albumArtImporter = new AlbumArtImporter();
-            File albumArtFile = albumArtImporter.scanDirectory(file.getParent());
+		// Delete all artists that don't have any album or track
+		ArtistDao artistDao = new ArtistDao();
+		artistDao.deleteEmptyArtist();
 
-            album = new Album();
-            album.setArtistId(albumArtist.getId());
-            album.setDirectoryId(rootDirectory.getId());
-            album.setName(albumName);
-            album.setLocation(file.getParent().toString());
-            if (albumArtFile != null) {
-                // TODO Remove this, albumarts are scanned separately
-                AppContext.getInstance().getAlbumArtService().importAlbumArt(album, albumArtFile, false);
-            }
-            Date updateDate = getDirectoryUpdateDate(parentPath);
-            album.setCreateDate(updateDate);
-            album.setUpdateDate(updateDate);
-            albumDao.create(album);
-        }
-        track.setAlbumId(album.getId());
-    }
+		if (log.isInfoEnabled())
+		{
+			log.info(MessageFormat.format("Done removing directory {0} from index", directory.getLocation()));
+		}
+	}
 
-    private Date getDirectoryUpdateDate(Path path) {
-        try {
-            return new Date(java.nio.file.Files.getLastModifiedTime(path).toMillis());
-        } catch (Exception e) {
-            log.error(MessageFormat.format("Cannot read date from directory {0}", path));
-        }
-        return null;
-    }
+	/**
+	 * Add / update a media file to the index.
+	 *
+	 * @param directory Directory to index
+	 * @param file      File to add
+	 */
+	public void indexFile(Directory directory, Path file)
+	{
+		Stopwatch stopWatch = Stopwatch.createStarted();
+		// TODO This method should handle albumarts too
+		try
+		{
+			TrackDao trackDao = new TrackDao();
+			Track track = trackDao.getActiveByDirectoryAndFilename(directory.getId(), file.toAbsolutePath().toString());
+			if (track != null)
+			{
+				readTrackMetadata(directory, file, track);
+				trackDao.update(track);
 
-    /**
-     * Reindex the whole collection.
-     */
-    public void reindex() {
-        DirectoryDao directoryDao = new DirectoryDao();
-        List<Directory> directoryList = directoryDao.findAllEnabled();
-        for (Directory directory : directoryList) {
-            addDirectoryToIndex(directory);
-        }
-    }
+				// FIXME update album date if track has changed?
+			}
+			else
+			{
+				track = new Track();
+				track.setFileName(file.toAbsolutePath().toString());
 
-    /**
-     * Update the album scores.
-     * TODO implement a more elaborated scoring function
-     */
-    public void updateScore() {
+				readTrackMetadata(directory, file, track);
+				trackDao.create(track);
+
+				// Update the album date
+				// TODO This makes no sense
+				/*
+				 * Album album = new Album(track.getAlbumId());
+				 * album.setUpdateDate(track.getCreateDate()); AlbumDao albumDao = new
+				 * AlbumDao(); albumDao.updateAlbumDate(album);
+				 */
+			}
+		}
+		catch (Exception e)
+		{
+			log.error("Error extracting metadata from file: " + file, e);
+		}
+		if (log.isInfoEnabled())
+		{
+			log.info(MessageFormat.format("File {0} indexed in {1}", file, stopWatch));
+		}
+	}
+
+	/**
+	 * Read metadata from a media file into the Track.
+	 *
+	 * @param rootDirectory Root directory to index
+	 * @param file          Media file to read from
+	 * @param track         Track entity (updated)
+	 */
+	public void readTrackMetadata(Directory rootDirectory, Path file, Track track) throws Exception
+	{
+		Path parentPath = file.getParent();
+		DirectoryNameParser nameParser = new DirectoryNameParser(parentPath);
+		String albumArtistName = StringUtils.abbreviate(nameParser.getArtistName(), 1000).trim();
+		String albumName = StringUtils.abbreviate(nameParser.getAlbumName(), 1000).trim();
+		ArtistDao artistDao = new ArtistDao();
+
+		AudioFile audioFile = AudioFileIO.read(file.toFile());
+		Tag tag = audioFile.getTag();
+
+		// The album artist can't be null, check is in the directory name parser
+		Artist albumArtist = artistDao.getActiveByName(albumArtistName);
+		if (albumArtist == null)
+		{
+			albumArtist = handleMissingArtist(albumArtistName, artistDao);
+		}
+
+		initTrack(rootDirectory, file, track, parentPath, albumName, artistDao, audioFile, tag, albumArtist);
+	}
+
+	private void initTrack(Directory rootDirectory, Path file, Track track, Path parentPath, String albumName,
+			ArtistDao artistDao, AudioFile audioFile, Tag tag, Artist albumArtist) throws Exception
+	{
+		if (tag == null)
+		{
+			handleMissingTag(file, track, albumArtist);
+		}
+		else
+		{
+			AudioHeader header = audioFile.getAudioHeader();
+
+			track.setLength(header.getTrackLength());
+			track.setBitrate(header.getSampleRateAsNumber());
+			track.setFormat(StringUtils.abbreviate(header.getEncodingType(), 50));
+			track.setVbr(header.isVariableBitRate());
+
+			setTrackOrder(track, tag);
+			setTrackYear(track, tag);
+			// Track title (can be empty string)
+			track.setTitle(StringUtils.abbreviate(tag.getFirst(FieldKey.TITLE), 2000).trim());
+			setTrackArtist(track, artistDao, tag);
+		}
+		setTrackAlbum(rootDirectory, file, track, parentPath, albumName, albumArtist);
+	}
+
+	private void setTrackAlbum(Directory rootDirectory, Path file, Track track, Path parentPath, String albumName,
+			Artist albumArtist) throws Exception
+	{
+		AlbumDao albumDao = new AlbumDao();
+		Album album = albumDao.getActiveByArtistIdAndName(albumArtist.getId(), albumName);
+		if (album == null)
+		{
+			// Import album art
+			AlbumArtImporter albumArtImporter = new AlbumArtImporter();
+			File albumArtFile = albumArtImporter.scanDirectory(file.getParent());
+
+			album = new Album();
+			album.setArtistId(albumArtist.getId());
+			album.setDirectoryId(rootDirectory.getId());
+			album.setName(albumName);
+			album.setLocation(file.getParent().toString());
+			if (albumArtFile != null)
+			{
+				// TODO Remove this, albumarts are scanned separately
+				AppContext.getInstance().getAlbumArtService().importAlbumArt(album, albumArtFile, false);
+			}
+			Date updateDate = getDirectoryUpdateDate(parentPath);
+			album.setCreateDate(updateDate);
+			album.setUpdateDate(updateDate);
+			albumDao.create(album);
+		}
+		track.setAlbumId(album.getId());
+	}
+
+	private void setTrackArtist(Track track, ArtistDao artistDao, Tag tag)
+	{
+		String artistName = StringUtils.abbreviate(tag.getFirst(FieldKey.ARTIST), 1000).trim();
+		Artist artist = artistDao.getActiveByName(artistName);
+		if (artist == null)
+		{
+			artist = handleMissingArtist(artistName, artistDao);
+		}
+		track.setArtistId(artist.getId());
+	}
+
+	private void setTrackYear(Track track, Tag tag)
+	{
+		String year = tag.getFirst(FieldKey.YEAR);
+		if (!Strings.isNullOrEmpty(year))
+		{
+			try
+			{
+				track.setYear(Integer.valueOf(year));
+			}
+			catch (NumberFormatException e)
+			{
+				// Ignore parsing errors
+			}
+		}
+	}
+
+	private void setTrackOrder(Track track, Tag tag)
+	{
+		String order = tag.getFirst(FieldKey.TRACK);
+		if (!Strings.isNullOrEmpty(order))
+		{
+			try
+			{
+				track.setOrder(Integer.valueOf(order));
+			}
+			catch (NumberFormatException e)
+			{
+				// Ignore parsing errors
+			}
+		}
+	}
+
+	private void handleMissingTag(Path file, Track track, Artist albumArtist)
+	{
+		// No tag available, use filename as title and album artist as artist, and guess
+		// the rest
+		track.setTitle(Files.getNameWithoutExtension(file.getFileName().toString()));
+		track.setArtistId(albumArtist.getId());
+		track.setLength((int) (file.toFile().length() / 128000));
+		track.setBitrate(128);
+		track.setFormat(Files.getFileExtension(file.getFileName().toString()));
+		track.setVbr(true);
+	}
+
+	private Artist handleMissingArtist(String albumArtistName, ArtistDao artistDao)
+	{
+		Artist albumArtist;
+		albumArtist = new Artist();
+		albumArtist.setName(albumArtistName);
+		artistDao.create(albumArtist);
+		return albumArtist;
+	}
+
+	private Date getDirectoryUpdateDate(Path path)
+	{
+		try
+		{
+			return new Date(java.nio.file.Files.getLastModifiedTime(path).toMillis());
+		}
+		catch (Exception e)
+		{
+			log.error(MessageFormat.format("Cannot read date from directory {0}", path));
+		}
+		return null;
+	}
+
+	/**
+	 * Reindex the whole collection.
+	 */
+	public void reindex()
+	{
+		DirectoryDao directoryDao = new DirectoryDao();
+		List<Directory> directoryList = directoryDao.findAllEnabled();
+		for (Directory directory : directoryList)
+		{
+			addDirectoryToIndex(directory);
+		}
+	}
+
+	/**
+	 * Update the album scores. TODO implement a more elaborated scoring function
+	 */
+	public void updateScore()
+	{
 //        AlbumDao albumDao = new AlbumDao();
 //        List<AlbumDto> albumList = albumDao.findByCriteria(new AlbumCriteria());
 //        for (AlbumDto albumDto : albumList) {
@@ -311,5 +407,5 @@ public class CollectionService extends AbstractScheduledService {
 //
 //            albumDao.updateScore(album);
 //        }
-    }
+	}
 }

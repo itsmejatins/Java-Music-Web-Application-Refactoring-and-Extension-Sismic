@@ -2,7 +2,7 @@ package com.sismics.music.core.listener.async;
 
 import com.google.common.base.Stopwatch;
 import com.google.common.eventbus.Subscribe;
-import com.sismics.music.core.event.async.TrackLikedAsyncEvent;
+import com.sismics.music.core.event.async.TrackLikedUnlikeAsyncEvent;
 import com.sismics.music.core.model.context.AppContext;
 import com.sismics.music.core.model.dbi.Track;
 import com.sismics.music.core.model.dbi.User;
@@ -18,36 +18,22 @@ import java.text.MessageFormat;
  *
  * @author jtremeaux
  */
-public class TrackLikedAsyncListener {
-    /**
-     * Logger.
-     */
-    private static final Logger log = LoggerFactory.getLogger(TrackLikedAsyncListener.class);
+public class TrackLikedAsyncListener extends AbstractAsyncListener<TrackLikedUnlikeAsyncEvent>
+{
 
-    /**
-     * Process the event.
-     *
-     * @param trackLikedAsyncEvent New directory created event
-     */
-    @Subscribe
-    public void onTrackLiked(final TrackLikedAsyncEvent trackLikedAsyncEvent) throws Exception {
-        if (log.isInfoEnabled()) {
-            log.info("Track liked event: " + trackLikedAsyncEvent.toString());
-        }
-        Stopwatch stopwatch = Stopwatch.createStarted();
+	@Override
+	protected void handleInternal(TrackLikedUnlikeAsyncEvent trackLikedUnlikeAsyncEvent)
+	{
+		final User user = trackLikedUnlikeAsyncEvent.getUser();
+		final Track track = trackLikedUnlikeAsyncEvent.getTrack();
 
-        final User user = trackLikedAsyncEvent.getUser();
-        final Track track = trackLikedAsyncEvent.getTrack();
+		TransactionUtil.handle(() -> {
+			if (user.getLastFmSessionToken() != null)
+			{
+				final LastFmService lastFmService = AppContext.getInstance().getLastFmService();
+				lastFmService.loveTrack(user, track);
+			}
+		});
 
-        TransactionUtil.handle(() -> {
-        if (user.getLastFmSessionToken() != null) {
-            final LastFmService lastFmService = AppContext.getInstance().getLastFmService();
-            lastFmService.loveTrack(user, track);
-        }
-        });
-
-        if (log.isInfoEnabled()) {
-            log.info(MessageFormat.format("Track liked completed in {0}", stopwatch));
-        }
-    }
+	}
 }
