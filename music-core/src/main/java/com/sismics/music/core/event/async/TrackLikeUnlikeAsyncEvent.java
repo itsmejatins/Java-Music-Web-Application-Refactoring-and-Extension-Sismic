@@ -9,7 +9,7 @@ import com.sismics.music.core.model.dbi.User;
  *
  * @author jtremeaux
  */
-public class TrackLikedUnlikeAsyncEvent {
+public class TrackLikeUnlikeAsyncEvent {
     /**
      * Originating user.
      */
@@ -20,7 +20,7 @@ public class TrackLikedUnlikeAsyncEvent {
      */
     private Track track;
 
-    public TrackLikedUnlikeAsyncEvent(User user, Track track) {
+    public TrackLikeUnlikeAsyncEvent(User user, Track track) {
         this.user = user;
         this.track = track;
     }

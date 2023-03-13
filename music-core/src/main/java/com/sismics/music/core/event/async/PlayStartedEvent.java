@@ -4,11 +4,11 @@ import com.google.common.base.Objects;
 import com.sismics.music.core.model.dbi.Track;
 
 /**
- * Play completed event.
+ * Play started event.
  *
  * @author jtremeaux
  */
-public class PlayAsyncEvent {
+public class PlayStartedEvent {
     /**
      * User ID.
      */
@@ -19,7 +19,7 @@ public class PlayAsyncEvent {
      */
     private Track track;
 
-    public PlayAsyncEvent(String userId, Track track) {
+    public PlayStartedEvent(String userId, Track track) {
         this.userId = userId;
         this.track = track;
     }

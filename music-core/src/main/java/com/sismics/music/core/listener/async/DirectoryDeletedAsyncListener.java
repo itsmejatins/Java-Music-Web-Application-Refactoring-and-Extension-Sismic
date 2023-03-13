@@ -1,6 +1,6 @@
 package com.sismics.music.core.listener.async;
 
-import com.sismics.music.core.event.async.DirectoryModificationAsyncEvent;
+import com.sismics.music.core.event.async.DirectoryDeletedAsyncEvent;
 import com.sismics.music.core.model.context.AppContext;
 import com.sismics.music.core.model.dbi.Directory;
 import com.sismics.music.core.service.collection.CollectionService;
@@ -11,11 +11,11 @@ import com.sismics.music.core.util.TransactionUtil;
  *
  * @author jtremeaux
  */
-public class DirectoryDeletedAsyncListener extends AbstractAsyncListener<DirectoryModificationAsyncEvent>
+public class DirectoryDeletedAsyncListener extends AbstractAsyncListener<DirectoryDeletedAsyncEvent>
 {
 
 	@Override
-	protected void handleInternal(DirectoryModificationAsyncEvent directoryDeletedAsyncEvent)
+	protected void handleInternal(DirectoryDeletedAsyncEvent directoryDeletedAsyncEvent)
 	{
 		final Directory directory = directoryDeletedAsyncEvent.getDirectory();
 

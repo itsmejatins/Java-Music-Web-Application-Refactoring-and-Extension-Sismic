@@ -2,7 +2,7 @@ package com.sismics.music.core.listener.async;
 
 import com.google.common.base.Stopwatch;
 import com.google.common.eventbus.Subscribe;
-import com.sismics.music.core.event.async.TrackLikedUnlikeAsyncEvent;
+import com.sismics.music.core.event.async.TrackLikeUnlikeAsyncEvent;
 import com.sismics.music.core.model.context.AppContext;
 import com.sismics.music.core.model.dbi.Track;
 import com.sismics.music.core.model.dbi.User;
@@ -18,11 +18,11 @@ import java.text.MessageFormat;
  *
  * @author jtremeaux
  */
-public class TrackUnlikedAsyncListener extends AbstractAsyncListener<TrackLikedUnlikeAsyncEvent>
+public class TrackUnlikedAsyncListener extends AbstractAsyncListener<TrackLikeUnlikeAsyncEvent>
 {
 
 	@Override
-	protected void handleInternal(TrackLikedUnlikeAsyncEvent trackUnlikedAsyncEvent)
+	protected void handleInternal(TrackLikeUnlikeAsyncEvent trackUnlikedAsyncEvent)
 	{
 		final User user = trackUnlikedAsyncEvent.getUser();
 		final Track track = trackUnlikedAsyncEvent.getTrack();
