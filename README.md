@@ -1,6 +1,6 @@
 # Music - Project 1 
 
-Welcome to the first project! This project on the Music app by Sismics. The original repository can be found [here](https://github.com/sismics/music). 
+This project is on the Music app by Sismics. The original repository can be found [here](https://github.com/sismics/music). 
 
 **Do not modify this README. Use the [docs](/docs/) directory for anything you might want to submit**
 
