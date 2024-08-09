@@ -1,4 +1,4 @@
-# Music - Project 1 
+# Sismic: Java Music App Refactor & Extension
 
 This project is on the Music app by Sismics. The original repository can be found [here](https://github.com/sismics/music). 
 We, a team of 4 from IIIT Hyderabad have refactored and extended this open sournce web based music applicaiton, improving code quality and functionality by integrating third-party APIs of Spotify and LastFM for music searching and recommendation. The project involved using UML diagrams, OOP principles, and design patterns to eliminate design smells and reduce technical debt. New features, including public/private/collaborative playlists and song recommendations, were added to enhance user engagement and maintainability. The project demonstrates strong software design skills and effective use of external APIs to enrich the user experience.
